@@ -1,20 +1,136 @@
-<ion-header [translucent]="true">
+<ion-header>
   <ion-toolbar>
     <ion-title>
-      Blank
+      <span class="logo">
+        <ion-icon name="map"></ion-icon>
+        Mapper
+      </span>
     </ion-title>
+    <ion-buttons slot="end">
+      <ion-button (click)="borrarTodo()" fill="clear" color="danger" title="Borrar todo">
+        <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+      </ion-button>
+    </ion-buttons>
   </ion-toolbar>
 </ion-header>
 
 <ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Blank</ion-title>
-    </ion-toolbar>
-  </ion-header>
 
-  <div id="container">
-    <strong>Ready to create an app?</strong>
-    <p>Start with Ionic <a target="_blank" rel="noopener noreferrer" href="https://ionicframework.com/docs/components">UI Components</a></p>
+  <!-- Mapa -->
+  <div id="mapId" class="mapa"></div>
+
+  <!-- Barra de estado -->
+  <div class="stats-bar">
+    <div class="stat">
+      <ion-icon name="location"></ion-icon>
+      <span>{{ puntos.length }} punto{{ puntos.length !== 1 ? 's' : '' }}</span>
+    </div>
+    <div class="stat" *ngIf="distanciaActual > 0">
+      <ion-icon name="navigate"></ion-icon>
+      <span>{{ formatDistance(distanciaActual) }}</span>
+    </div>
+    <div class="stat stat-loading" *ngIf="cargando">
+      <ion-spinner name="dots" color="primary"></ion-spinner>
+      <span>Obteniendo GPS...</span>
+    </div>
   </div>
+
+  <!-- Botones de acción -->
+  <div class="action-buttons">
+    <ion-button
+      class="btn-accion btn-localizar"
+      (click)="centrarEnUbicacion()"
+      [disabled]="cargando"
+      title="Centrar mapa en mi ubicación">
+      <ion-icon slot="start" name="navigate-outline"></ion-icon>
+      Centrar
+    </ion-button>
+
+    <ion-button
+      class="btn-accion btn-punto"
+      (click)="obtenerPunto()"
+      [disabled]="cargando"
+      title="Capturar punto GPS">
+      <ion-icon slot="start" name="add-circle-outline"></ion-icon>
+      Punto
+    </ion-button>
+
+    <ion-button
+      class="btn-accion btn-deshacer"
+      (click)="deshacerPunto()"
+      [disabled]="puntos.length === 0"
+      title="Deshacer último punto">
+      <ion-icon slot="start" name="arrow-undo-outline"></ion-icon>
+      Deshacer
+    </ion-button>
+
+    <ion-button
+      class="btn-accion btn-trazar"
+      (click)="trazar()"
+      [disabled]="puntos.length < 2"
+      title="Dibujar ruta con los puntos actuales">
+      <ion-icon slot="start" name="git-commit-outline"></ion-icon>
+      Trazar
+    </ion-button>
+
+    <ion-button
+      class="btn-accion btn-guardar"
+      (click)="guardarRuta()"
+      [disabled]="puntos.length < 2"
+      title="Guardar ruta actual">
+      <ion-icon slot="start" name="save-outline"></ion-icon>
+      Guardar
+    </ion-button>
+  </div>
+
+  <!-- Panel rutas guardadas -->
+  <div class="routes-section">
+    <div class="section-header">
+      <h2>
+        <ion-icon name="bookmark-outline"></ion-icon>
+        Rutas Guardadas
+        <ion-badge *ngIf="rutasGuardadas.length > 0" color="primary">{{ rutasGuardadas.length }}</ion-badge>
+      </h2>
+    </div>
+
+    <div *ngIf="rutasGuardadas.length === 0" class="empty-state">
+      <ion-icon name="map-outline"></ion-icon>
+      <p>Aún no hay rutas guardadas.<br>Captura puntos y guarda tu primera ruta.</p>
+    </div>
+
+    <div class="routes-list">
+      <div
+        class="route-card"
+        *ngFor="let ruta of rutasGuardadas"
+        (click)="verRuta(ruta)">
+        <div class="route-color-bar" [style.background]="ruta.color"></div>
+        <div class="route-info">
+          <h3>{{ ruta.nombre }}</h3>
+          <div class="route-meta">
+            <span>
+              <ion-icon name="location-outline"></ion-icon>
+              {{ ruta.puntos.length }} pts
+            </span>
+            <span>
+              <ion-icon name="navigate-outline"></ion-icon>
+              {{ formatDistance(ruta.distancia) }}
+            </span>
+            <span>
+              <ion-icon name="calendar-outline"></ion-icon>
+              {{ ruta.fecha }}
+            </span>
+          </div>
+        </div>
+        <ion-button
+          fill="clear"
+          color="danger"
+          class="delete-btn"
+          (click)="eliminarRuta(ruta, $event)"
+          title="Eliminar ruta">
+          <ion-icon slot="icon-only" name="trash-outline"></ion-icon>
+        </ion-button>
+      </div>
+    </div>
+  </div>
+
 </ion-content>

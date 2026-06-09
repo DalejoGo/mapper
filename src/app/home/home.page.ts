@@ -1,13 +1,260 @@
-import { Component } from '@angular/core';
+import { Component, AfterViewInit } from '@angular/core';
+import { AlertController, ToastController } from '@ionic/angular';
+import { Geolocation } from '@capacitor/geolocation';
+import * as L from 'leaflet';
+import { MapService } from '../services/map.service';
+import { Punto, Ruta } from '../models/route.model';
 
 @Component({
   selector: 'app-home',
   templateUrl: 'home.page.html',
   styleUrls: ['home.page.scss'],
-  standalone: false,
+  standalone: false
 })
-export class HomePage {
+export class HomePage implements AfterViewInit {
+  map!: L.Map;
+  puntos: Punto[] = [];
+  rutasGuardadas: Ruta[] = [];
+  rutaActual: L.Polyline | null = null;
+  marcadores: L.Marker[] = [];
+  distanciaActual = 0;
+  cargando = false;
 
-  constructor() {}
+  constructor(
+    private alertCtrl: AlertController,
+    private toastCtrl: ToastController,
+    private mapService: MapService
+  ) {}
 
+  ngAfterViewInit() {
+    setTimeout(() => {
+      this.cargarMapa();
+      this.rutasGuardadas = this.mapService.loadRutas();
+      this.puntos = this.mapService.loadPuntos();
+      this.distanciaActual = this.mapService.calculateDistance(this.puntos);
+    }, 300);
+  }
+
+  private cargarMapa() {
+    this.map = L.map('mapId', {
+      zoomControl: false,
+      attributionControl: false
+    }).setView([4.60971, -74.08175], 13);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '© OpenStreetMap © CartoDB',
+      subdomains: 'abcd',
+      maxZoom: 19
+    }).addTo(this.map);
+
+    L.control.zoom({ position: 'topright' }).addTo(this.map);
+
+    setTimeout(() => this.map.invalidateSize(), 300);
+  }
+
+  private crearIcono(numero: number): L.DivIcon {
+    return L.divIcon({
+      html: `<div class="marker-pin"><span>${numero}</span></div>`,
+      className: '',
+      iconSize: [34, 42],
+      iconAnchor: [17, 42],
+      popupAnchor: [0, -42]
+    });
+  }
+
+  async obtenerPunto() {
+    this.cargando = true;
+    try {
+      const pos = await Geolocation.getCurrentPosition({
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      });
+
+      const { latitude: lat, longitude: lng } = pos.coords;
+      const numero = this.puntos.length + 1;
+
+      const marker = L.marker([lat, lng], { icon: this.crearIcono(numero) })
+        .addTo(this.map)
+        .bindPopup(
+          `<div class="popup-content"><b>Punto ${numero}</b><br>
+           <small>${lat.toFixed(6)}, ${lng.toFixed(6)}</small></div>`
+        )
+        .openPopup();
+
+      this.marcadores.push(marker);
+      this.map.setView([lat, lng], Math.max(this.map.getZoom(), 16), { animate: true });
+
+      this.puntos.push({ nombre: `Punto ${numero}`, coordenadas: [lat, lng], timestamp: Date.now() });
+      this.mapService.savePuntos(this.puntos);
+      this.distanciaActual = this.mapService.calculateDistance(this.puntos);
+
+      await this.toast(`Punto ${numero} capturado`, 'success');
+    } catch {
+      await this.toast('No se pudo obtener la ubicación', 'danger');
+    } finally {
+      this.cargando = false;
+    }
+  }
+
+  async deshacerPunto() {
+    if (this.puntos.length === 0) {
+      await this.toast('No hay puntos para deshacer', 'warning');
+      return;
+    }
+    this.puntos.pop();
+    const marker = this.marcadores.pop();
+    if (marker) this.map.removeLayer(marker);
+    this.mapService.savePuntos(this.puntos);
+    this.distanciaActual = this.mapService.calculateDistance(this.puntos);
+
+    if (this.rutaActual) { this.map.removeLayer(this.rutaActual); this.rutaActual = null; }
+    if (this.puntos.length >= 2) this.trazar();
+
+    await this.toast('Último punto eliminado', 'warning');
+  }
+
+  trazar() {
+    if (this.puntos.length < 2) {
+      this.toast('Necesitas al menos 2 puntos', 'warning');
+      return;
+    }
+    if (this.rutaActual) this.map.removeLayer(this.rutaActual);
+
+    this.rutaActual = L.polyline(
+      this.puntos.map(p => p.coordenadas),
+      { color: '#6C63FF', weight: 5, opacity: 0.9, smoothFactor: 1 }
+    ).addTo(this.map);
+
+    this.map.fitBounds(this.rutaActual.getBounds(), { padding: [50, 50], animate: true });
+  }
+
+  async guardarRuta() {
+    if (this.puntos.length < 2) {
+      await this.toast('Necesitas al menos 2 puntos para guardar', 'warning');
+      return;
+    }
+
+    const defaultName = `Ruta ${this.rutasGuardadas.length + 1}`;
+    const alert = await this.alertCtrl.create({
+      header: 'Guardar Ruta',
+      message: 'Dale un nombre a tu ruta',
+      cssClass: 'mapper-alert',
+      inputs: [{ name: 'nombre', type: 'text', placeholder: defaultName, value: defaultName }],
+      buttons: [
+        { text: 'Cancelar', role: 'cancel' },
+        {
+          text: 'Guardar',
+          cssClass: 'alert-btn-guardar',
+          handler: (data) => {
+            const nombre = data.nombre?.trim() || defaultName;
+            const ruta: Ruta = {
+              id: this.mapService.generateId(),
+              nombre,
+              puntos: [...this.puntos],
+              distancia: this.mapService.calculateDistance(this.puntos),
+              fecha: new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' }),
+              color: this.mapService.getRouteColor(this.rutasGuardadas.length)
+            };
+            this.rutasGuardadas.push(ruta);
+            this.mapService.saveRutas(this.rutasGuardadas);
+            this.toast(`"${nombre}" guardada`, 'success');
+          }
+        }
+      ]
+    });
+    await alert.present();
+  }
+
+  verRuta(ruta: Ruta) {
+    if (this.rutaActual) this.map.removeLayer(this.rutaActual);
+
+    this.rutaActual = L.polyline(
+      ruta.puntos.map(p => p.coordenadas),
+      { color: ruta.color, weight: 5, opacity: 0.9 }
+    ).addTo(this.map);
+
+    this.map.fitBounds(this.rutaActual.getBounds(), { padding: [50, 50], animate: true });
+  }
+
+  async eliminarRuta(ruta: Ruta, event: Event) {
+    event.stopPropagation();
+    const alert = await this.alertCtrl.create({
+      header: 'Eliminar Ruta',
+      message: `¿Eliminar "${ruta.nombre}"?`,
+      cssClass: 'mapper-alert',
+      buttons: [
+        { text: 'Cancelar', role: 'cancel' },
+        {
+          text: 'Eliminar',
+          role: 'destructive',
+          cssClass: 'alert-btn-danger',
+          handler: () => {
+            this.rutasGuardadas = this.rutasGuardadas.filter(r => r.id !== ruta.id);
+            this.mapService.saveRutas(this.rutasGuardadas);
+            this.toast(`"${ruta.nombre}" eliminada`, 'danger');
+          }
+        }
+      ]
+    });
+    await alert.present();
+  }
+
+  async centrarEnUbicacion() {
+    this.cargando = true;
+    try {
+      const pos = await Geolocation.getCurrentPosition({ enableHighAccuracy: true });
+      this.map.setView([pos.coords.latitude, pos.coords.longitude], 17, { animate: true });
+    } catch {
+      await this.toast('No se pudo obtener la ubicación', 'danger');
+    } finally {
+      this.cargando = false;
+    }
+  }
+
+  async borrarTodo() {
+    if (this.puntos.length === 0 && this.rutasGuardadas.length === 0) {
+      await this.toast('No hay datos para borrar', 'warning');
+      return;
+    }
+    const alert = await this.alertCtrl.create({
+      header: 'Borrar Todo',
+      message: 'Se eliminarán todos los puntos y rutas guardadas. Esta acción no se puede deshacer.',
+      cssClass: 'mapper-alert',
+      buttons: [
+        { text: 'Cancelar', role: 'cancel' },
+        {
+          text: 'Borrar Todo',
+          role: 'destructive',
+          cssClass: 'alert-btn-danger',
+          handler: () => {
+            this.mapService.clearAll();
+            this.puntos = [];
+            this.rutasGuardadas = [];
+            this.distanciaActual = 0;
+            this.marcadores.forEach(m => this.map.removeLayer(m));
+            this.marcadores = [];
+            if (this.rutaActual) { this.map.removeLayer(this.rutaActual); this.rutaActual = null; }
+            this.toast('Todos los datos eliminados', 'danger');
+          }
+        }
+      ]
+    });
+    await alert.present();
+  }
+
+  formatDistance(meters: number): string {
+    return this.mapService.formatDistance(meters);
+  }
+
+  private async toast(message: string, color: 'success' | 'danger' | 'warning' | 'primary') {
+    const t = await this.toastCtrl.create({
+      message,
+      duration: 2500,
+      color,
+      position: 'top',
+      cssClass: 'mapper-toast'
+    });
+    await t.present();
+  }
 }
