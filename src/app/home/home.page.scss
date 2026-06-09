@@ -1,151 +1,326 @@
+// ── Variables ────────────────────────────────────
 :host {
-  --map-height: 50vh;
-  --bg: #0f0e17;
-  --bg-card: #1a1a2e;
-  --bg-card-hover: #16213e;
-  --color-primary: #6C63FF;
+  --color-primary:   #6C63FF;
   --color-secondary: #FF6584;
-  --color-accent: #43D9AD;
-  --color-warn: #FFB347;
-  --color-text: #fffffe;
-  --color-muted: #a7a9be;
-  --border: rgba(255, 255, 255, 0.08);
+  --color-accent:    #43D9AD;
+  --color-warn:      #FFB347;
+  --color-text:      #fffffe;
+  --color-muted:     #a7a9be;
+  --bg-dark:         #0f0e17;
+  --bg-card:         #1a1a2e;
+  --border:          rgba(255, 255, 255, 0.08);
+  --bar-height:      64px;
 }
 
+// ── Header ────────────────────────────────────────
 ion-toolbar {
   --background: #1a1a2e;
-  --color: #fffffe;
+  --color: var(--color-text);
   --border-color: transparent;
-  --min-height: 56px;
-}
-
-ion-content {
-  --background: #0f0e17;
-  --padding-bottom: 24px;
+  --min-height: 52px;
 }
 
 .logo {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 20px;
+  font-size: 19px;
   font-weight: 800;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.4px;
 
-  ion-icon {
-    color: var(--color-primary);
-    font-size: 22px;
-  }
+  ion-icon { color: var(--color-primary); font-size: 21px; }
+}
+
+// ── Content / Mapa ───────────────────────────────
+ion-content {
+  --background: var(--bg-dark);
+  --overflow: hidden;
 }
 
 .mapa {
-  height: var(--map-height);
-  width: 100%;
-  display: block;
-  position: relative;
-}
+  position: absolute;
+  inset: 0;
+  bottom: var(--bar-height);
+  /* deja espacio para el safe area + barra */
 
-.stats-bar {
-  background: rgba(26, 26, 46, 0.97);
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border);
-  min-height: 42px;
-
-  .stat {
-    display: flex;
-    align-items: center;
-    gap: 5px;
+  // ── Hint ──────────────────────────────────────
+  .map-hint {
+    position: absolute;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    background: rgba(15, 14, 23, 0.78);
     color: var(--color-muted);
     font-size: 12px;
-    font-weight: 500;
+    font-weight: 600;
+    padding: 6px 14px;
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    pointer-events: none;
+    white-space: nowrap;
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    transition: opacity 0.4s, transform 0.4s;
 
-    ion-icon {
-      color: var(--color-primary);
-      font-size: 15px;
+    ion-icon { font-size: 14px; color: var(--color-primary); }
+
+    &.hidden {
+      opacity: 0;
+      transform: translateX(-50%) translateY(8px);
+      pointer-events: none;
     }
   }
 
-  .stat-loading {
-    ion-spinner { transform: scale(0.7); }
+  // ── Stats overlay ──────────────────────────────
+  .stats-overlay {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    z-index: 1000;
+    display: flex;
+    gap: 6px;
+    pointer-events: none;
+
+    .stat-chip {
+      background: rgba(15, 14, 23, 0.82);
+      backdrop-filter: blur(8px);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 5px 12px;
+      color: var(--color-text);
+      font-size: 12px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+
+      ion-icon { color: var(--color-primary); font-size: 14px; }
+
+      &.accent ion-icon { color: var(--color-accent); }
+    }
+  }
+
+  // ── GPS / Routing loading ─────────────────────
+  .gps-loading {
+    position: absolute;
+    top: 12px;
+    right: 52px;
+    z-index: 1000;
+    background: rgba(15, 14, 23, 0.82);
+    backdrop-filter: blur(8px);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 5px 12px;
     color: var(--color-primary);
-  }
-}
-
-.action-buttons {
-  display: flex;
-  gap: 8px;
-  padding: 12px 14px;
-  overflow-x: auto;
-  background: #1a1a2e;
-  border-bottom: 1px solid var(--border);
-  -webkit-overflow-scrolling: touch;
-
-  &::-webkit-scrollbar { display: none; }
-  scrollbar-width: none;
-
-  .btn-accion {
-    --border-radius: 22px;
     font-size: 12px;
-    font-weight: 700;
-    flex-shrink: 0;
-    height: 38px;
-    letter-spacing: 0.3px;
-    text-transform: uppercase;
-    transition: opacity 0.2s, transform 0.15s;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
 
-    ion-icon { font-size: 15px; }
+    ion-spinner { transform: scale(0.65); }
 
-    &[disabled] { opacity: 0.35; }
-    &:not([disabled]):active { transform: scale(0.96); }
-  }
-
-  .btn-punto    { --background: #6C63FF; --color: #fff; }
-  .btn-localizar { --background: #43D9AD; --color: #0f0e17; }
-  .btn-trazar   { --background: #FF6584; --color: #fff; }
-  .btn-guardar  { --background: #FFB347; --color: #0f0e17; }
-  .btn-deshacer {
-    --background: rgba(255,255,255,0.08);
-    --color: #a7a9be;
-    border: 1px solid rgba(255,255,255,0.12);
-    border-radius: 22px;
+    &.routing {
+      top: 48px;
+      color: var(--color-accent);
+    }
   }
 }
 
-.routes-section {
-  padding: 16px 14px 32px;
+// ── Bottom action bar ────────────────────────────
+.bottom-bar {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--bar-height);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background: #1a1a2e;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  z-index: 500;
+}
 
-  .section-header h2 {
-    color: var(--color-text);
-    font-size: 15px;
+.action-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--color-muted);
+  font-size: 10px;
+  font-weight: 600;
+  font-family: inherit;
+  min-height: var(--bar-height);
+  padding: 8px 4px;
+  cursor: pointer;
+  position: relative;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: color 0.15s, transform 0.12s;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+
+  ion-icon { font-size: 22px; transition: color 0.15s; }
+
+  &:active:not([disabled]) { transform: scale(0.91); }
+
+  &[disabled] { opacity: 0.3; pointer-events: none; }
+
+  // botón GPS destacado (fab)
+  &.fab {
+    ion-icon {
+      font-size: 26px;
+      color: var(--color-primary);
+      filter: drop-shadow(0 0 8px rgba(108,99,255,0.7));
+    }
+    color: var(--color-primary);
     font-weight: 700;
-    margin: 0 0 14px;
+  }
+
+  .btn-badge {
+    position: absolute;
+    top: 6px;
+    right: calc(50% - 16px);
+    background: var(--color-secondary);
+    color: #fff;
+    font-size: 9px;
+    font-weight: 800;
+    min-width: 16px;
+    height: 16px;
+    border-radius: 8px;
+    padding: 0 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+}
+
+.btn-centrar:active  ion-icon { color: var(--color-accent); }
+.btn-centrar:active  { color: var(--color-accent); }
+.btn-trazar:active   ion-icon { color: var(--color-secondary); }
+.btn-trazar:active   { color: var(--color-secondary); }
+.btn-guardar:active  ion-icon { color: var(--color-warn); }
+.btn-guardar:active  { color: var(--color-warn); }
+.btn-rutas:active    ion-icon { color: var(--color-primary); }
+.btn-rutas:active    { color: var(--color-primary); }
+
+// ── Routes slide-up panel ────────────────────────
+.routes-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  pointer-events: none;
+  display: flex;
+  align-items: flex-end;
+
+  &.open {
+    pointer-events: auto;
+
+    .sheet-backdrop { opacity: 1; }
+    .sheet-panel     { transform: translateY(0); }
+  }
+
+  .sheet-backdrop {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.55);
+    opacity: 0;
+    transition: opacity 0.3s;
+    backdrop-filter: blur(2px);
+  }
+
+  .sheet-panel {
+    position: relative;
+    width: 100%;
+    max-height: 75vh;
+    background: #1a1a2e;
+    border-radius: 24px 24px 0 0;
+    border-top: 1px solid var(--border);
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.32, 0.72, 0, 1);
+    display: flex;
+    flex-direction: column;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  .sheet-handle {
+    padding: 12px 0 4px;
+    display: flex;
+    justify-content: center;
+    cursor: pointer;
+
+    .handle-bar {
+      width: 40px;
+      height: 4px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 4px;
+    }
+  }
+
+  .sheet-header {
     display: flex;
     align-items: center;
     gap: 8px;
+    padding: 4px 16px 12px;
+    border-bottom: 1px solid var(--border);
 
-    ion-icon { color: var(--color-primary); font-size: 17px; }
+    h2 {
+      flex: 1;
+      color: var(--color-text);
+      font-size: 16px;
+      font-weight: 700;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+
+      ion-icon { color: var(--color-primary); font-size: 18px; }
+    }
 
     ion-badge {
       --background: var(--color-primary);
-      font-size: 10px;
-      padding: 2px 8px;
+      font-size: 11px;
+      padding: 3px 8px;
       border-radius: 10px;
       font-weight: 700;
     }
+
+    .close-btn {
+      --color: var(--color-muted);
+      margin: 0;
+      --padding-start: 8px;
+      --padding-end: 8px;
+    }
+  }
+
+  .sheet-body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    flex: 1;
+    padding: 12px 14px 16px;
   }
 }
 
+// ── Empty state ──────────────────────────────────
 .empty-state {
   text-align: center;
-  padding: 36px 20px;
+  padding: 32px 20px;
   color: var(--color-muted);
 
   ion-icon {
     font-size: 52px;
-    color: rgba(108, 99, 255, 0.25);
+    color: rgba(108, 99, 255, 0.2);
     display: block;
     margin-bottom: 12px;
   }
@@ -157,6 +332,7 @@ ion-content {
   }
 }
 
+// ── Route cards ──────────────────────────────────
 .routes-list {
   display: flex;
   flex-direction: column;
@@ -164,18 +340,20 @@ ion-content {
 }
 
 .route-card {
-  background: var(--bg-card);
+  background: rgba(255,255,255,0.04);
   border-radius: 14px;
   display: flex;
   align-items: center;
   overflow: hidden;
   border: 1px solid var(--border);
   cursor: pointer;
-  transition: transform 0.15s, background 0.15s;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s, background 0.12s;
 
   &:active {
     transform: scale(0.98);
-    background: var(--bg-card-hover);
+    background: rgba(255,255,255,0.07);
   }
 
   .route-color-bar {
@@ -186,7 +364,7 @@ ion-content {
 
   .route-info {
     flex: 1;
-    padding: 12px 10px;
+    padding: 13px 10px;
     min-width: 0;
 
     h3 {
@@ -218,51 +396,64 @@ ion-content {
   }
 
   .delete-btn {
-    --color: #FF6584;
-    opacity: 0.55;
-    flex-shrink: 0;
-    transition: opacity 0.2s;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: rgba(255, 101, 132, 0.5);
+    font-size: 20px;
+    padding: 14px 14px;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    display: flex;
+    align-items: center;
+    transition: color 0.15s;
 
-    &:hover { opacity: 1; }
+    &:active { color: var(--color-secondary); }
   }
 }
 
+// ── Leaflet customization ────────────────────────
 ::ng-deep {
   .leaflet-control-zoom {
     border: none !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
     border-radius: 12px !important;
     overflow: hidden;
     margin-right: 10px !important;
     margin-top: 10px !important;
 
     a {
-      background: #1a1a2e !important;
-      color: #a7a9be !important;
+      background: rgba(26, 26, 46, 0.92) !important;
+      color: var(--color-muted) !important;
       border: none !important;
-      font-size: 18px !important;
-      line-height: 30px !important;
-      width: 32px !important;
-      height: 32px !important;
+      font-size: 20px !important;
+      width: 36px !important;
+      height: 36px !important;
+      line-height: 36px !important;
       transition: background 0.2s, color 0.2s;
 
-      &:hover {
-        background: #6C63FF !important;
-        color: #fff !important;
-      }
+      &:hover { background: var(--color-primary) !important; color: #fff !important; }
     }
   }
 
   .leaflet-popup-content-wrapper {
     background: #1a1a2e !important;
-    border: 1px solid rgba(255,255,255,0.08) !important;
-    border-radius: 10px !important;
-    box-shadow: 0 8px 24px rgba(0,0,0,0.5) !important;
-    color: #fffffe !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.6) !important;
+    color: var(--color-text) !important;
+    font-size: 13px !important;
 
-    b { color: #6C63FF; }
-    small { color: #a7a9be; }
+    b { color: var(--color-primary); }
+    small { color: var(--color-muted); }
   }
 
   .leaflet-popup-tip { background: #1a1a2e !important; }
+
+  .leaflet-popup-close-button {
+    color: var(--color-muted) !important;
+    font-size: 20px !important;
+    padding: 6px 8px !important;
+  }
 }
